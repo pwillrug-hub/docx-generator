@@ -20,8 +20,8 @@ def generate():
         # Die Namen in data.get('...') müssen GENAU mit den Spaltennamen in Google Sheets übereinstimmen!
         context = {
             # Stammdaten
-            'datum start': data.get('Berichtszeitraum von', ''),
-            'Datum ende': data.get('Berichtszeitraum bis', ''),
+            'datum_start': data.get('Berichtszeitraum von', ''),
+            'Datum_ende': data.get('Berichtszeitraum bis', ''),
             'NameTHA': data.get('Name der Teilhabeassistenz', ''),
             'BerichtZeit': data.get('Berichtszeitraum', ''),
             'TL': data.get('Name der Teamleitung', ''),
