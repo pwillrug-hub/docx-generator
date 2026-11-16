@@ -1,106 +1,25 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, send_file
 from docxtpl import DocxTemplate
 import io
-import os
-import traceback
 
 app = Flask(__name__)
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    try:
-        data = request.json
-        
-        template_path = "vorlage.docx"
-        if not os.path.exists(template_path):
-            return jsonify({"error": f"Template {template_path} not found"}), 500
-        
-        # Mapping: Google-Spalte → Word-Platzhalter
-        context = {
-            # Stammdaten
-            'NameTHA': data.get('Trage bitte deinen Namen ein', ''),
-            'Datum': data.get('Datum', ''),
-            'TL': data.get('Deine Teamleitung ist:', ''),
-            'datum_start': data.get('Berichtszeitraum von', ''),
-            'Datum_ende': data.get('Berichtszeitraum bis', ''),
-            'BerichtZeit': data.get('Angaben des Zuständigkeitszeitraums (nur bei Einsatz mehrerer THA’s innerhalb eines Berichtszeitraums) von… bis…:', ''),
-            'StartMa': data.get('Beginn der Maßnahme', ''),
-            'std': data.get('Bewilligter Stundenumfang der Teilhabeassistenz:', ''),
-            
-            # Poolbetreuung (Checkboxen)
-            'Pool_ja': '☑' if str(data.get('Poolbetreuung:', '')).strip().lower() == 'ja' else '☐',
-            'Pool_nein': '☑' if str(data.get('Poolbetreuung:', '')).strip().lower() == 'nein' else '☐',
-            
-            # Wochentage
-            'Mo': data.get('Montag', ''),
-            'Di': data.get('Dienstag', ''),
-            'Mi': data.get('Mittwoch', ''),
-            'Do': data.get('Donnerstag', ''),
-            'Fr': data.get('Freitag', ''),
-            
-            # Personalien
-            'NameKi': data.get('Name, Vorname: ', ''),
-            'Kl': data.get('Klassenstufe:', ''),
-            'SJ': data.get('Schulbesuchsjahr:', ''),
-            'NameS': data.get('Name der Schule: ', ''),
-            'NameKl': data.get('Name der Lehrkraft:', ''),
-            'PoolQ': data.get('Gibt es bereits eine Schülerin/ einen Schüler mit einer Teilhabeassistenz in der Klasse (auch anderer Kostenträger), wie ist der Stundenumfang? Ist eine Poollösung möglich?', ''),
-            
-            # Freitextblöcke
-            '4': data.get('Ereignisse (besondere Vorkommnisse, Auffälligkeiten, Ausfallzeiten, Praktika etc.) der Schülerin / des Schülers im Berichtszeitraum', ''),
-            '5': data.get('Entwicklung, Fortschritte, Unterstützungsbedarf', ''),
-            
-            # Bereich A – Lernen
-            'aa': data.get('a) Entwicklung (Fortschritte, ggf. Rückschritte) (a): ', ''),
-            'ab': data.get('b) aktueller (noch vorhandener) Unterstützungsbedarf (a): ', ''),
-            'ac': data.get('c) Vorschläge zur Verbesserung/ Optimierung (a):', ''),
-            
-            # Bereich B – Sozial-emotional
-            'ba': data.get('a) Entwicklung (Fortschritte, ggf. Rückschritte) (b): ', ''),
-            'bb': data.get('b) aktueller (noch vorhandener) Unterstützungsbedarf  (b): ', ''),
-            'bc': data.get('c) Vorschläge zur Verbesserung/ Optimierung (b) :', ''),
-            
-            # Bereich C – Kommunikation
-            'ca': data.get('a) Entwicklung (Fortschritte, ggf. Rückschritte)  (c)  : ', ''),
-            'cb': data.get('b) aktueller (noch vorhandener) Unterstützungsbedarf  (c): ', ''),
-            'cc': data.get('c) Vorschläge zur Verbesserung/ Optimierung  (c):', ''),
-            
-            # Bereich D – Motorik
-            'da': data.get('a) Entwicklung (Fortschritte, ggf. Rückschritte) (d): ', ''),
-            'db': data.get('b) aktueller (noch vorhandener) Unterstützungsbedarf (d): ', ''),
-            'dc': data.get('c) Vorschläge zur Verbesserung/ Optimierung (d):', ''),
-            
-            # Bereich E – Lebenspraxis
-            'ea': data.get('a) Entwicklung (Fortschritte, ggf. Rückschritte) (e): ', ''),
-            'eb': data.get('b) aktueller (noch vorhandener) Unterstützungsbedarf (e): ', ''),
-            'ec': data.get('c) Vorschläge zur Verbesserung/ Optimierung (e):', ''),
-            
-            # Abschluss
-            '6': data.get('Wie gestaltet sich die Zusammenarbeit zwischen den Beteiligten (Schüler/in, Lehrkraft, Eltern)', ''),
-            '7': data.get('Was könnte perspektivisch zur Beendigung der Maßnahme oder Stundenreduzierung führen?', ''),
-        }
-        
-        doc = DocxTemplate(template_path)
-        doc.render(context)
-        out = io.BytesIO()
-        doc.save(out)
-        out.seek(0)
-        
-        return send_file(
-            out,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            as_attachment=True,
-            download_name='Bericht.docx'
-        )
-    except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }), 500
-
-@app.route('/')
-def index():
-    return "DOCX Generator is running. Use POST /generate with JSON data."
+    data = request.json
+    template_path = "vorlage.docx"
+    doc = DocxTemplate(template_path)
+    doc.render(data)
+    
+    out = io.BytesIO()
+    doc.save(out)
+    
+    return send_file(
+        io.BytesIO(out.getvalue()),
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        as_attachment=True,
+        download_name='Bericht.docx'
+    )
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=5000)
