@@ -6,16 +6,39 @@ app = Flask(__name__)
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    # Holt das JSON direkt ab, egal wie n8n es strukturiert
-    incoming_data = request.json
+    req_data = request.json
     
-    # Falls n8n die Daten in einem 'body'- oder 'data'-Unterobjekt schickt:
-    data = incoming_data.get('body', incoming_data)
-    
+    # Wenn n8n die Daten als reinen Text oder verschachtelt schickt, 
+    # wandeln wir sie hier sicher in ein Dictionary um:
+    if isinstance(req_data, dict):
+        data = req_data.get('body', req_data)
+        # Falls es ein einzelner langer Textstring ist, parsen wir ihn:
+        if isinstance(data, str):
+            data_dict = {}
+            lines = data.split('\n')
+            current_key = None
+            for line in lines:
+                if ':' in line and not current_key:
+                    parts = line.split(':', 1)
+                    current_key = parts[0].strip()
+                    val = parts[1].strip()
+                    data_dict[current_key] = val
+                    current_key = None
+                else:
+                    if current_key:
+                        data_dict[current_key] += "\n" + line
+            data = data_dict
+    else:
+        data = {}
+
     template_path = "vorlage.docx"
     doc = DocxTemplate(template_path)
-    doc.render(data)
     
+    try:
+        doc.render(data)
+    except Exception as e:
+        print(f"Render Error: {e}")
+
     out = io.BytesIO()
     doc.save(out)
     
@@ -25,3 +48,6 @@ def generate():
         as_attachment=True,
         download_name='Bericht.docx'
     )
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
