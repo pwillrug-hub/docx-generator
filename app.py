@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    data = request.json
+    data = request.json or request.form
     template_path = "vorlage.docx"
     doc = DocxTemplate(template_path)
     doc.render(data)
@@ -20,6 +20,3 @@ def generate():
         as_attachment=True,
         download_name='Bericht.docx'
     )
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
